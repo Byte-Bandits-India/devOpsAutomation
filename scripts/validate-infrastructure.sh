@@ -135,10 +135,12 @@ else
     echo "✅ Disk space is sufficient for new releases."
 fi
 
-# 4. Check RAM & Swap
-MEM_FREE_MB=$(free -m | awk '/Mem:/ {print $4}')
-SWAP_USED_MB=$(free -m | awk '/Swap:/ {print $3}')
-echo "📊 Memory: ${MEM_FREE_MB} MB free RAM | Swap: ${SWAP_USED_MB} MB used."
+# 4. Check RAM & Swap (Linux)
+if command -v free >/dev/null 2>&1; then
+    MEM_FREE_MB=$(free -m | awk '/Mem:/ {print $4}')
+    SWAP_USED_MB=$(free -m | awk '/Swap:/ {print $3}')
+    echo "📊 Memory: ${MEM_FREE_MB} MB free RAM | Swap: ${SWAP_USED_MB} MB used."
+fi
 
 # 5. Check Directory Hierarchy
 REQUIRED_DIRS=("/var/www" "/var/log/deployments" "/var/lock/deployments" "/var/backups" "/opt/devops-automation")
