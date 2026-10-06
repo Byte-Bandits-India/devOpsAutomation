@@ -1,0 +1,118 @@
+# ==============================================================================
+# Nginx Configuration for Hybrid Virtual Host: {{ DOMAIN }}
+# Components: Static SPA Frontend + Node.js API + Persistent Uploads + phpMyAdmin
+# Generated automatically by DevOps Automation Engine
+# ==============================================================================
+
+# HTTP -> HTTPS Redirection
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ DOMAIN }};
+
+    # ACME Challenge location for Certbot auto-renewal
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS Server Block
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {{ DOMAIN }};
+
+    # SSL Certificates
+    ssl_certificate {{ SSL_CERT }};
+    ssl_certificate_key {{ SSL_KEY }};
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_tickets off;
+
+    # Modern TLS Security
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    # Security Headers
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Gzip Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
+
+    # Component 1: Static SPA Frontend Root
+    root {{ FRONTEND_ROOT }};
+    index index.html;
+
+    # Component 2: Node.js Backend API
+    location /api/ {
+        proxy_pass http://{{ BIND_IP }}:{{ BACKEND_PORT }};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        client_max_body_size 64M;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Component 3: Persistent Uploads
+    location /uploads/ {
+        alias {{ UPLOADS_DIR }}/;
+        expires 30d;
+        add_header Cache-Control "public";
+        access_log off;
+    }
+
+{% if ENABLE_PHPMYADMIN %}
+    # Component 4: phpMyAdmin Management Web UI
+    location /phpmyadmin/ {
+        root /var/www;
+        index index.php index.html index.htm;
+        location ~ ^/phpmyadmin/(.+\.php)$ {
+            root /var/www;
+            fastcgi_pass unix:/run/php-fpm/www.sock;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include fastcgi_params;
+            client_max_body_size 64M;
+        }
+        location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+            root /var/www;
+            expires 30d;
+        }
+    }
+{% endif %}
+
+    # Static Assets Caching
+    location ~* \.(?:ico|css|js|gif|jpe?g|png|svg|woff2?|eot|ttf|otf)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # SPA Fallback (client-side routing)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

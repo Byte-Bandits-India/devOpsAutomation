@@ -1,0 +1,5 @@
+.DS_Store
+*.log
+*.lock
+tmp/
+*.tar.gz

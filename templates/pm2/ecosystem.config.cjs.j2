@@ -1,0 +1,27 @@
+module.exports = {
+  apps: [
+    {
+      name: "{{ PROJECT_NAME }}",
+      script: "{{ ENTRYPOINT }}",
+      cwd: "/var/www/{{ PROJECT_NAME }}/current",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+{% if MEMORY_LIMIT %}
+      max_memory_restart: "{{ MEMORY_LIMIT }}",
+{% endif %}
+      env: {
+        NODE_ENV: "{{ ENVIRONMENT }}",
+        PORT: "{{ PORT }}",
+        HOST: "{{ BIND_IP }}",
+        HOSTNAME: "{{ BIND_IP }}"
+      },
+      error_file: "/var/log/deployments/{{ PROJECT_NAME }}-error.log",
+      out_file: "/var/log/deployments/{{ PROJECT_NAME }}-out.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+      kill_timeout: 5000,
+      wait_ready: false
+    }
+  ]
+};

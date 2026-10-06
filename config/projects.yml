@@ -1,0 +1,200 @@
+version: "1.0"
+
+server:
+  base_dir: "/var/www"
+  nginx_conf_dir: "/etc/nginx/conf.d"
+  log_dir: "/var/log/deployments"
+  lock_dir: "/var/lock/deployments"
+  backup_dir: "/var/backups"
+  keep_releases: 3
+  disk_limits:
+    warn_free_mb: 1000
+    block_free_mb: 500
+    emergency_free_mb: 250
+
+projects:
+  # ============================================================================
+  # TITAN (Vite Frontend + TS Express Server + SQLite WAL)
+  # ============================================================================
+  titan:
+    repository: "Byte-Bandits-India/titan-Eye"
+    type: "node"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "titan.xylozentech.com"
+    bind_ip: "127.0.0.1"
+    port: 3001
+    health_check:
+      path: "/api/ping"
+      expected_status: 200
+      timeout_seconds: 5
+      max_retries: 5
+      retry_delay_seconds: 3
+    runtime:
+      entrypoint: "server.js"
+      manager: "pm2"
+    resources:
+      memory_max_restart: "250M"
+    persistent:
+      files:
+        - "database.db"
+        - "database.db-wal"
+        - "database.db-shm"
+      directories:
+        - "uploads"
+        - "logs"
+
+  # ============================================================================
+  # XYLOZEN (Next.js 14 Standalone Website)
+  # ============================================================================
+  xylozen:
+    repository: "Byte-Bandits-India/Xylozen"
+    type: "nextjs-standalone"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "xylozentech.com"
+    aliases:
+      - "www.xylozentech.com"
+    bind_ip: "127.0.0.1"
+    port: 3002
+    health_check:
+      path: "/"
+      expected_status: 200
+      timeout_seconds: 5
+      max_retries: 5
+      retry_delay_seconds: 3
+    runtime:
+      entrypoint: "server.js"
+      manager: "pm2"
+    resources:
+      memory_max_restart: "250M"
+    persistent:
+      directories:
+        - "public/uploads"
+
+  # ============================================================================
+  # BYTEBANDITS (Next.js 15 Standalone Website)
+  # ============================================================================
+  bytebandits:
+    repository: "Byte-Bandits-India/ByteBandits"
+    type: "nextjs-standalone"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "thebytebandits.com"
+    aliases:
+      - "www.thebytebandits.com"
+    bind_ip: "127.0.0.1"
+    port: 3003
+    health_check:
+      path: "/"
+      expected_status: 200
+      timeout_seconds: 5
+      max_retries: 5
+      retry_delay_seconds: 3
+    runtime:
+      entrypoint: "server.js"
+      manager: "pm2"
+    resources:
+      memory_max_restart: "250M"
+    persistent:
+      directories: []
+
+  # ============================================================================
+  # DASHBOARD / CRM - PRODUCTION (Hybrid: Static SPA + Node API)
+  # ============================================================================
+  dashboard-prod-backend:
+    repository: "Byte-Bandits-India/Xylozen-crm"
+    type: "node"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "crm.xylozentech.com"
+    path_prefix: "/api"
+    bind_ip: "127.0.0.1"
+    port: 4001
+    health_check:
+      path: "/api/health"
+      expected_status: 200
+      timeout_seconds: 5
+      max_retries: 5
+      retry_delay_seconds: 3
+    runtime:
+      entrypoint: "dist/server.js"
+      manager: "pm2"
+    resources:
+      memory_max_restart: "300M"
+    persistent:
+      directories:
+        - "uploads"
+    database:
+      type: "mysql"
+      migrations: "manual"
+
+  dashboard-prod-frontend:
+    repository: "Byte-Bandits-India/Xylozen-crm"
+    type: "static-spa"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "crm.xylozentech.com"
+    static_root_subdir: "dist"
+    resources:
+      memory_max_restart: null
+
+  # ============================================================================
+  # DASHBOARD / CRM - TEST (Hybrid: Static SPA + Node API)
+  # ============================================================================
+  dashboard-test-backend:
+    repository: "Byte-Bandits-India/Xylozen-crm"
+    type: "node"
+    environment: "test"
+    allowed_branches:
+      - "develop"
+    domain: "testcrm.xylozentech.com"
+    path_prefix: "/api"
+    bind_ip: "127.0.0.1"
+    port: 4002
+    health_check:
+      path: "/api/health"
+      expected_status: 200
+      timeout_seconds: 5
+      max_retries: 5
+      retry_delay_seconds: 3
+    runtime:
+      entrypoint: "dist/server.js"
+      manager: "pm2"
+    resources:
+      memory_max_restart: "250M"
+    persistent:
+      directories:
+        - "uploads"
+    database:
+      type: "mysql"
+      migrations: "manual"
+
+  dashboard-test-frontend:
+    repository: "Byte-Bandits-India/Xylozen-crm"
+    type: "static-spa"
+    environment: "test"
+    allowed_branches:
+      - "develop"
+    domain: "testcrm.xylozentech.com"
+    static_root_subdir: "dist"
+    resources:
+      memory_max_restart: null
+
+  # ============================================================================
+  # PHPMYADMIN (Native PHP-FPM web UI for MySQL management)
+  # ============================================================================
+  phpmyadmin:
+    repository: null
+    type: "php-fpm"
+    environment: "production"
+    domain: "crm.xylozentech.com"
+    path_prefix: "/phpmyadmin"
+    root_path: "/var/www/phpmyadmin"
+    resources:
+      memory_max_restart: null

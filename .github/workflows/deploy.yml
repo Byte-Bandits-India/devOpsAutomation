@@ -1,0 +1,79 @@
+name: Reusable DevOps Deployment Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        required: true
+        type: string
+        description: "Registered project identifier in config/projects.yml"
+      environment:
+        required: true
+        type: string
+        default: "production"
+        description: "Target environment (production or test)"
+      artifact_path:
+        required: true
+        type: string
+        description: "Path to compiled deployment artifact (.tar.gz)"
+    secrets:
+      EC2_HOST:
+        required: true
+      EC2_USER:
+        required: true
+      EC2_SSH_KEY:
+        required: true
+
+concurrency:
+  group: deploy-${{ inputs.project_name }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to AWS EC2 Platform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔑 Configure SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          cat << 'EOF' > ~/.ssh/config
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            ServerAliveInterval 15
+            ServerAliveCountMax 3
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: 📤 Transfer Artifact to EC2
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          echo "Uploading ${{ inputs.artifact_path }} to EC2..."
+          scp -i ~/.ssh/id_rsa "${{ inputs.artifact_path }}" "${USER}@${HOST}:/tmp/${{ inputs.project_name }}-deploy.tar.gz"
+
+      - name: 🚀 Execute Atomic Deployment Engine on Server
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/id_rsa "${USER}@${HOST}" bash -s << 'EOF'
+            set -euo pipefail
+            
+            PROJECT="${{ inputs.project_name }}"
+            ARTIFACT="/tmp/${PROJECT}-deploy.tar.gz"
+            ENGINE="/opt/devops-automation/scripts/deploy.sh"
+            
+            if [[ ! -f "$ENGINE" ]]; then
+              echo "❌ ERROR: DevOps deployment engine not installed on server at $ENGINE"
+              exit 1
+            fi
+            
+            echo "🚀 Executing deployment engine for $PROJECT..."
+            "$ENGINE" "$PROJECT" "$ARTIFACT"
+            rm -f "$ARTIFACT"
+          EOF
