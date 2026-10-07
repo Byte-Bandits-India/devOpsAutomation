@@ -62,14 +62,22 @@ EOF
 
 IFS='|' read -r TYPE DOMAIN ALIASES PORT BIND_IP <<< "$PROJ_INFO"
 
-# Determine target certificate files (Pre-cutover vs Certbot standard)
-SSL_CERT="/etc/pki/nginx/certs/${DOMAIN}.crt"
-SSL_KEY="/etc/pki/nginx/certs/${DOMAIN}.key"
-
-# Fallback to Certbot standard if present
+# Determine target certificate files (Certbot standard vs Host PKI vs Bootstrap self-signed)
 if [[ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]]; then
     SSL_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
     SSL_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
+elif [[ -f "/etc/pki/nginx/certs/${DOMAIN}.crt" && -f "/etc/pki/nginx/certs/${DOMAIN}.key" ]]; then
+    SSL_CERT="/etc/pki/nginx/certs/${DOMAIN}.crt"
+    SSL_KEY="/etc/pki/nginx/certs/${DOMAIN}.key"
+else
+    echo "⚠️  No SSL certificate found for ${DOMAIN}. Generating temporary bootstrap certificate..."
+    sudo mkdir -p /etc/pki/nginx/certs
+    SSL_CERT="/etc/pki/nginx/certs/${DOMAIN}.crt"
+    SSL_KEY="/etc/pki/nginx/certs/${DOMAIN}.key"
+    sudo openssl req -x509 -nodes -days 30 -newkey rsa:2048 \
+        -keyout "$SSL_KEY" \
+        -out "$SSL_CERT" \
+        -subj "/CN=${DOMAIN}" >/dev/null 2>&1 || true
 fi
 
 # Temporary candidate file for validation
@@ -110,6 +118,31 @@ if [[ "$DOMAIN" == "crm.xylozentech.com" || "$DOMAIN" == "testcrm.xylozentech.co
         sed -i 's/{% if ENABLE_PHPMYADMIN %}//g' "$TMP_CONF"
         sed -i 's/{% endif %}//g' "$TMP_CONF"
     fi
+
+elif [[ "$TYPE" == "static-spa" ]]; then
+    STATIC_SUBDIR=$(node - "$CONFIG_FILE" "$PROJECT_NAME" << 'EOF'
+const fs = require('fs');
+const content = fs.readFileSync(process.argv[2], 'utf8');
+const target = process.argv[3];
+const regex = new RegExp(`  ${target}:[\\s\\S]*?(?=\\n  [a-zA-Z0-9_-]+:|$)`);
+const match = content.match(regex);
+if (!match) { console.log('dist'); process.exit(0); }
+const m = match[0].match(/static_root_subdir:\s*["']?([^"'\s]+)/);
+console.log(m ? m[1] : 'dist');
+EOF
+)
+    FRONTEND_ROOT="/var/www/${PROJECT_NAME}/current/${STATIC_SUBDIR}"
+    
+    # Render static SPA template
+    sed -e "s|{{ DOMAIN }}|${DOMAIN}|g" \
+        -e "s|{{ ALIASES }}|${ALIASES}|g" \
+        -e "s|{{ SSL_CERT }}|${SSL_CERT}|g" \
+        -e "s|{{ SSL_KEY }}|${SSL_KEY}|g" \
+        -e "s|{{ FRONTEND_ROOT }}|${FRONTEND_ROOT}|g" \
+        "${TEMPLATES_DIR}/static-spa.conf.j2" > "$TMP_CONF"
+
+    sed -i 's/{% if ALIASES %}//g' "$TMP_CONF"
+    sed -i 's/{% endif %}//g' "$TMP_CONF"
 
 else
     # Standard reverse proxy virtual host (Xylozen, ByteBandits, Titan)

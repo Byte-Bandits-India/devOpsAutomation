@@ -119,35 +119,69 @@ fi
 ln -sfn "${SHARED_DIR}/.env" "${NEW_RELEASE_DIR}/.env"
 
 # Shared persistent directories & files defined in config
-PROJECT_TYPE=$(node - "$CONFIG_FILE" "$PROJECT_NAME" << 'EOF'
+PROJ_PERSISTENT_JSON=$(node - "$CONFIG_FILE" "$PROJECT_NAME" << 'EOF'
 const fs = require('fs');
 const content = fs.readFileSync(process.argv[2], 'utf8');
 const target = process.argv[3];
 const regex = new RegExp(`  ${target}:[\\s\\S]*?(?=\\n  [a-zA-Z0-9_-]+:|$)`);
 const match = content.match(regex);
 if (!match) process.exit(1);
-const typeMatch = match[0].match(/type:\s*["']?([^"'\s]+)/);
-console.log(typeMatch ? typeMatch[1] : 'node');
+const block = match[0];
+const typeMatch = block.match(/type:\s*["']?([^"'\s]+)/);
+
+// Parse persistent files
+const filesSection = block.match(/files:\s*\n((\s+-\s+["']?[^\n"']+["']?\n?)+)/);
+let files = [];
+if (filesSection) {
+  const lines = filesSection[1].split('\n');
+  for (let l of lines) {
+    const m = l.match(/-\s*["']?([^"'\s]+)/);
+    if (m) files.push(m[1]);
+  }
+}
+
+// Parse persistent directories
+const dirsSection = block.match(/directories:\s*\n((\s+-\s+["']?[^\n"']+["']?\n?)+)/);
+let dirs = [];
+if (dirsSection) {
+  const lines = dirsSection[1].split('\n');
+  for (let l of lines) {
+    const m = l.match(/-\s*["']?([^"'\s]+)/);
+    if (m) dirs.push(m[1]);
+  }
+}
+
+console.log(JSON.stringify({
+  type: typeMatch ? typeMatch[1] : 'node',
+  files,
+  directories: dirs
+}));
 EOF
 )
 
-# For Titan SQLite safety:
-if [[ "$PROJECT_NAME" == "titan" ]]; then
-    mkdir -p "${SHARED_DIR}/data" "${SHARED_DIR}/uploads" "${SHARED_DIR}/logs"
-    for db_file in database.db database.db-wal database.db-shm; do
-        if [[ -f "${SHARED_DIR}/data/${db_file}" ]]; then
-            ln -sfn "${SHARED_DIR}/data/${db_file}" "${NEW_RELEASE_DIR}/${db_file}"
-        fi
-    done
-    ln -sfn "${SHARED_DIR}/uploads" "${NEW_RELEASE_DIR}/uploads"
-    ln -sfn "${SHARED_DIR}/logs" "${NEW_RELEASE_DIR}/logs"
-fi
+PROJECT_TYPE=$(echo "$PROJ_PERSISTENT_JSON" | node -e 'const d=JSON.parse(fs.readFileSync(0)); console.log(d.type);')
 
-# For CRM persistent uploads:
-if [[ "$PROJECT_NAME" == *"backend"* ]]; then
-    mkdir -p "${SHARED_DIR}/uploads"
-    ln -sfn "${SHARED_DIR}/uploads" "${NEW_RELEASE_DIR}/uploads"
-fi
+# Link persistent files dynamically (e.g. SQLite database files, certs)
+while IFS= read -r file; do
+    if [[ -n "$file" ]]; then
+        mkdir -p "${SHARED_DIR}/$(dirname "$file")"
+        mkdir -p "${NEW_RELEASE_DIR}/$(dirname "$file")"
+        if [[ -f "${SHARED_DIR}/${file}" ]]; then
+            ln -sfn "${SHARED_DIR}/${file}" "${NEW_RELEASE_DIR}/${file}"
+            echo "   🔗 Linked persistent file: ${file} -> shared/${file}"
+        fi
+    fi
+done < <(echo "$PROJ_PERSISTENT_JSON" | node -e 'const d=JSON.parse(fs.readFileSync(0)); d.files.forEach(f => console.log(f));')
+
+# Link persistent directories dynamically (e.g. uploads, logs, public/uploads)
+while IFS= read -r dir; do
+    if [[ -n "$dir" ]]; then
+        mkdir -p "${SHARED_DIR}/${dir}"
+        mkdir -p "${NEW_RELEASE_DIR}/$(dirname "$dir")"
+        ln -sfn "${SHARED_DIR}/${dir}" "${NEW_RELEASE_DIR}/${dir}"
+        echo "   🔗 Linked persistent directory: ${dir} -> shared/${dir}"
+    fi
+done < <(echo "$PROJ_PERSISTENT_JSON" | node -e 'const d=JSON.parse(fs.readFileSync(0)); d.directories.forEach(dir => console.log(dir));')
 
 # 7. Atomic Symlink Switch
 echo "🔄 Atomically switching 'current' pointer to release ${TIMESTAMP}..."

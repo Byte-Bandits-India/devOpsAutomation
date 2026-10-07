@@ -116,20 +116,20 @@ Open `/opt/devops-automation/config/projects.yml` and add your project block. Fo
         - "public/uploads"             # Shared paths preserved across releases
 ```
 
-### Step 2: Initialize Server Configuration
+### Step 2: Initialize Server Configuration & SSL (Single Command)
 
-Run the generator to create the isolated Nginx config and directories:
-
-```bash
-/opt/devops-automation/scripts/generate-nginx.sh my-new-app
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-Obtain the SSL certificate via Certbot (if not already existing):
+Run the automated onboarding engine to check ports, create directories, configure Nginx, and request SSL:
 
 ```bash
-sudo certbot certonly --webroot -w /var/www/certbot -d app.xylozentech.com
+/opt/devops-automation/scripts/onboard-project.sh my-new-app --issue-ssl
 ```
+
+This single command:
+1. Validates `projects.yml` and verifies the assigned port has no collisions.
+2. Creates `/var/www/<project>/releases` and `/var/www/<project>/shared` (with `.env` template).
+3. Generates the isolated Nginx virtual host configuration (`/etc/nginx/conf.d/<domain>.conf`).
+4. Issues a trusted Let's Encrypt SSL certificate and reloads Nginx.
+5. Generates the isolated PM2 process manifest (`ecosystem.config.cjs`).
 
 ### Step 3: Connect Your GitHub Repository
 
