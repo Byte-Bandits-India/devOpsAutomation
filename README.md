@@ -1,97 +1,222 @@
-# AWS EC2 Multi-Project Deployment Automation Platform
+# AWS EC2 Multi-Project DevOps Deployment Platform
 
-A declarative, isolated, zero-downtime deployment platform designed for hosting multiple production and test applications on a single AWS EC2 instance without cross-project interference.
+A centralized, declarative, isolated, and automated deployment platform designed for AWS EC2 instances hosting multiple independent web applications and backend APIs.
+
+```text
+GitHub Actions CI/CD (Per Repository)
+              │
+              ▼ (Build in CI: Next.js / Vite / Express)
+     Production Artifact (.tar.gz)
+              │
+              ▼ (SSH / SCP via Reusable Workflow)
+       Target EC2 Server (/tmp)
+              │
+              ▼ (devops-automation/scripts/deploy.sh)
+    ┌─────────────────────────────────────────────────────────┐
+    │  /var/www/<project>/releases/<timestamp>                │
+    │  ├── Atomic Symlink Switch (current -> release)        │
+    │  ├── Persistent Shared Symlinks (.env, uploads, db)     │
+    │  ├── Isolated PM2 Reload (pm2 startOrReload <proj>)     │
+    │  ├── Isolated Nginx Config (/etc/nginx/conf.d/<domain>) │
+    │  └── Automated Deep Health Check (/health or /ping)     │
+    └─────────────────────────────────────────────────────────┘
+              │ (If health check fails)
+              └──► Instant Automatic Rollback to previous release
+```
 
 ---
 
-## Architecture Overview
+## 🌟 Key Architectural Principles
 
-* **Source of Truth:** `config/projects.yml`
-* **Process Manager:** PM2 (with dedicated per-project ecosystem files)
-* **Reverse Proxy:** Nginx (with modular per-domain configurations)
-* **Deployment Pattern:** Atomic release directories with symlink switching (`releases/<TIMESTAMP>` → `current`)
-* **Persistence:** Preserved `.env`, persistent database files (SQLite WAL), and user uploads in `shared/`
-* **Failure Safety:** Automated pre-flight health checks and instant rollback to previous stable release
+1. **100% Native Runtime (Host Nginx + PM2 + PHP-FPM)**:
+   - Zero Docker runtime dependency in production.
+   - Eliminated container virtualization overhead, cgroup memory contention, and port collisions on a resource-constrained `t3.micro` instance (913 MB RAM, 10 GB disk).
+2. **Zero Cross-Project Blast Radius**:
+   - Every project runs in its own directory tree (`/var/www/<project>/`).
+   - Every project has an isolated PM2 ecosystem config (`/var/www/<project>/ecosystem.config.cjs`). Deploying Project A **never** restarts or reloads Project B.
+   - Every domain has an isolated Nginx virtual host configuration (`/etc/nginx/conf.d/<domain>.conf`).
+3. **Atomic Deployments & Zero Downtime**:
+   - Deploys to a new timestamped release folder.
+   - Atomically switches the `current` symlink via `ln -sfn`.
+   - Performs automated health checks against local endpoints before marking active.
+   - Instantly rolls back symlink and PM2 state if the health check fails.
+4. **Single Source of Truth (`config/projects.yml`)**:
+   - Central registry defining ports, domains, memory limits, persistent assets, health check paths, and database types for all server projects.
 
 ---
 
-## Directory Structure
+## 📁 System Layout
 
 ```text
 /opt/devops-automation/
 ├── config/
-│   └── projects.yml              # Central registry of all projects, ports, domains
+│   └── projects.yml                 # Declarative registry of all projects & ports
 ├── templates/
 │   ├── nginx/
-│   │   ├── reverse-proxy.conf.j2 # Standard Node / Next.js proxy
-│   │   └── hybrid-crm.conf.j2    # Hybrid virtual host (Static SPA + API + Uploads + PMA)
+│   │   ├── reverse-proxy.conf.j2    # Template for standard Next.js / Node upstreams
+│   │   ├── hybrid-crm.conf.j2       # Template for static SPA + Node API + phpMyAdmin
+│   │   └── static-spa.conf.j2       # Template for pure static frontends
 │   ├── pm2/
-│   │   └── ecosystem.config.cjs.j2
+│   │   └── ecosystem.config.cjs.j2  # Template for isolated PM2 process manifests
 │   └── systemd/
-│       └── pm2-ec2-user.service   # Clean Amazon Linux PM2 boot persistence unit
+│       └── pm2-ec2-user.service     # Clean native Amazon Linux 2023 PM2 service
 ├── scripts/
-│   ├── deploy.sh                 # Atomic release deployment orchestrator
-│   ├── rollback.sh               # Rollback handler (automatic or manual)
-│   ├── health-check.sh           # Non-blocking health checker
-│   ├── generate-nginx.sh         # Idempotent domain config generator
-│   ├── generate-pm2.sh           # Isolated PM2 config generator
-│   ├── validate-infrastructure.sh# Pre-flight system and syntax validator
-│   ├── cleanup.sh                # Release pruner (preserves latest 3)
-│   ├── status.sh                 # System observability dashboard
-│   ├── cutover-nginx.sh          # Pre-validated Caddy → Nginx cutover script
-│   └── rollback-ingress.sh       # Instant Nginx → Caddy fallback script
-└── .github/
-    └── workflows/
-        └── deploy.yml            # Reusable GitHub Actions deployment pipeline
+│   ├── deploy.sh                    # Core atomic release & deployment engine
+│   ├── rollback.sh                  # Instant one-step rollback engine
+│   ├── health-check.sh              # Deep health probe runner
+│   ├── status.sh                    # Unified multi-project status dashboard
+│   ├── backup-databases.sh          # SQLite WAL checkpoint & MySQL dump engine
+│   ├── generate-nginx.sh            # Generates isolated Nginx virtual host configs
+│   ├── generate-pm2.sh              # Generates isolated PM2 ecosystem configs
+│   ├── cutover-nginx.sh             # Zero-downtime ingress migration engine
+│   ├── rollback-ingress.sh          # Ingress emergency fallback engine
+│   ├── cleanup.sh                   # Release & log retention pruner
+│   └── validate-infrastructure.sh   # Comprehensive pre-flight system auditor
+├── .github/workflows/
+│   └── deploy.yml                   # Reusable GitHub Actions deployment pipeline
+└── examples/
+    ├── nextjs-workflow.yml          # Example CI/CD for Next.js 14/15 Standalone
+    ├── express-workflow.yml         # Example CI/CD for Express / Node.js APIs
+    └── static-spa-workflow.yml      # Example CI/CD for React / Vite SPAs
 ```
 
 ---
 
-## On-Server Commands
+## 🚀 How to Add a New Project (3 Simple Steps)
+
+When you create a new application or connect an existing GitHub repository, you only need to complete three simple steps:
+
+### Step 1: Register in `config/projects.yml`
+
+Open `/opt/devops-automation/config/projects.yml` and add your project block. For example:
+
+```yaml
+  my-new-app:
+    repository: "Byte-Bandits-India/my-new-app"
+    type: "nextjs-standalone"          # or 'node' or 'static-spa'
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "app.xylozentech.com"
+    bind_ip: "127.0.0.1"
+    port: 3004                         # Choose next available port (e.g. 3004, 3005)
+    health_check:
+      path: "/"
+      expected_status: 200
+      timeout_seconds: 5
+      max_retries: 5
+      retry_delay_seconds: 3
+    runtime:
+      entrypoint: "server.js"
+      manager: "pm2"
+    resources:
+      memory_max_restart: "250M"       # Memory ceiling for PM2 auto-restart
+    persistent:
+      directories:
+        - "public/uploads"             # Shared paths preserved across releases
+```
+
+### Step 2: Initialize Server Configuration
+
+Run the generator to create the isolated Nginx config and directories:
 
 ```bash
-# Check status of all applications and system resources
-/opt/devops-automation/scripts/status.sh
-
-# Run pre-flight infrastructure validation
-/opt/devops-automation/scripts/validate-infrastructure.sh
-
-# Deploy a new release manually
-/opt/devops-automation/scripts/deploy.sh <project_name> <artifact_tarball_path>
-
-# Roll back to the previous release
-/opt/devops-automation/scripts/rollback.sh <project_name>
-
-# Back up SQLite (Titan WAL) and MySQL
-/opt/devops-automation/scripts/backup-databases.sh
+/opt/devops-automation/scripts/generate-nginx.sh my-new-app
+sudo nginx -t && sudo systemctl reload nginx
 ```
+
+Obtain the SSL certificate via Certbot (if not already existing):
+
+```bash
+sudo certbot certonly --webroot -w /var/www/certbot -d app.xylozentech.com
+```
+
+### Step 3: Connect Your GitHub Repository
+
+In your application's GitHub repository, add `.github/workflows/deploy.yml`:
+
+```yaml
+name: Production Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci && npm run build
+      
+      # Package production artifact
+      - run: |
+          mkdir -p /tmp/artifact
+          cp -a .next/standalone/. /tmp/artifact/
+          mkdir -p /tmp/artifact/.next
+          cp -a .next/static /tmp/artifact/.next/
+          cp -a public /tmp/artifact/ 2>/dev/null || true
+          tar -czf /tmp/release.tar.gz -C /tmp/artifact .
+
+      # Trigger centralized deployment engine
+      - uses: Byte-Bandits-India/devOpsAutomation/.github/workflows/deploy.yml@main
+        with:
+          project_name: "my-new-app"
+          environment: "production"
+          artifact_path: "/tmp/release.tar.gz"
+        secrets:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+```
+
+**That's it!** Every `git push` to `main` will build the artifact in GitHub Actions, SCP it to EC2, execute `deploy.sh`, reload only that PM2 process, verify health, and prune old releases without affecting any other project.
 
 ---
 
-## Adding a New Project in 3 Steps
+## 🛠️ Operational Command Cheat Sheet
 
-1. **Add entry to `config/projects.yml`:**
-   ```yaml
-   projects:
-     new-app:
-       repository: "organization/new-app"
-       type: "nextjs-standalone"
-       environment: "production"
-       domain: "app.example.com"
-       bind_ip: "127.0.0.1"
-       port: 3004
-       health_check:
-         path: "/"
-         expected_status: 200
-       runtime:
-         entrypoint: "server.js"
-         manager: "pm2"
-       resources:
-         memory_max_restart: "250M"
-   ```
+All administrative operations are accessible directly on the EC2 server:
 
-2. **In the application repository, build and trigger deployment:**
-   Call the reusable GitHub Actions workflow `.github/workflows/deploy.yml`.
+| Operation | Command | Description |
+| :--- | :--- | :--- |
+| **Status Overview** | `/opt/devops-automation/scripts/status.sh` | Visual multi-project dashboard showing RAM, disk, ports, PM2 status, active releases, and domains. |
+| **Deploy Project** | `/opt/devops-automation/scripts/deploy.sh <project> <artifact>` | Deploys an artifact (.tar.gz or dir) with atomic switch & health check. |
+| **Instant Rollback** | `/opt/devops-automation/scripts/rollback.sh <project>` | Reverts `current` symlink to previous release and reloads PM2 in < 2s. |
+| **Health Check** | `/opt/devops-automation/scripts/health-check.sh <project>` | Performs retried HTTP health check against local port. |
+| **Database Backup** | `/opt/devops-automation/scripts/backup-databases.sh` | Safe SQLite WAL checkpoint + snapshot & MySQL compressed dump. |
+| **Prune Old Releases** | `/opt/devops-automation/scripts/cleanup.sh [project]` | Enforces 3-release retention and cleans old deployment logs. |
+| **Infrastructure Audit**| `/opt/devops-automation/scripts/validate-infrastructure.sh` | Comprehensive pre-flight check of disk, RAM, ports, PM2, and Nginx. |
+| **Ingress Fallback** | `/opt/devops-automation/scripts/rollback-ingress.sh` | Stops Nginx and brings Caddy back online in < 2 seconds. |
 
-3. **Deploy:**
-   The deployment engine will automatically create `/var/www/new-app/{releases,shared}`, allocate port `3004`, start PM2, generate `/etc/nginx/conf.d/app.example.com.conf`, and verify health without touching any existing project.
+---
+
+## 📋 Active Applications & Port Allocation
+
+| Component | Port | Type | Domain | Active Release / Path | Memory Limit |
+| :--- | :---: | :--- | :--- | :--- | :---: |
+| **Titan Eye** | `3001` | Node / Express + SQLite WAL | `titan.xylozentech.com` | `/var/www/titan/current` | `250M` |
+| **Xylozen** | `3002` | Next.js 14 Standalone | `xylozentech.com`, `www.xylozentech.com` | `/var/www/xylozen/current` | `250M` |
+| **ByteBandits** | `3003` | Next.js 15 Standalone | `thebytebandits.com`, `www.thebytebandits.com` | `/var/www/bytebandits/current` | `250M` |
+| **CRM Prod API** | `4001` | Node / Express + MySQL | `crm.xylozentech.com/api` | `/var/www/dashboard-prod-backend/current` | `300M` |
+| **CRM Prod Frontend**| `-` | Static SPA | `crm.xylozentech.com/` | `/var/www/dashboard-prod-frontend/current/dist` | N/A |
+| **CRM Test API** | `4002` | Node / Express + MySQL | `testcrm.xylozentech.com/api` | `/var/www/dashboard-test-backend/current` | `250M` |
+| **CRM Test Frontend**| `-` | Static SPA | `testcrm.xylozentech.com/` | `/var/www/dashboard-test-frontend/current/dist` | N/A |
+| **phpMyAdmin** | `-` | Native PHP-FPM (`/run/php-fpm/www.sock`) | `crm.xylozentech.com/phpmyadmin/` | `/var/www/phpmyadmin` | N/A |
+
+---
+
+## ⏰ Automated Systemd Timers
+
+1. **SSL Automated Renewals**:
+   - `certbot-renew.timer` (runs twice daily).
+   - Deployment hook in `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh` automatically reloads Nginx upon successful renewal.
+2. **Automated Database Backups**:
+   - `db-backup.timer` (runs daily at `03:00 UTC`).
+   - Executes `/opt/devops-automation/scripts/backup-databases.sh` and logs to `/var/log/deployments/db-backup.log`.
+3. **PM2 Process Persistence**:
+   - `pm2-ec2-user.service` enabled under systemd to automatically resurrect PM2 processes on server reboot.

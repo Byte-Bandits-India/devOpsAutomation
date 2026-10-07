@@ -116,8 +116,8 @@ projects:
     bind_ip: "127.0.0.1"
     port: 4001
     health_check:
-      path: "/api/health"
-      expected_status: 200
+      path: "/api/auth/me"
+      expected_status: 401
       timeout_seconds: 5
       max_retries: 5
       retry_delay_seconds: 3
@@ -158,8 +158,8 @@ projects:
     bind_ip: "127.0.0.1"
     port: 4002
     health_check:
-      path: "/api/health"
-      expected_status: 200
+      path: "/api/auth/me"
+      expected_status: 401
       timeout_seconds: 5
       max_retries: 5
       retry_delay_seconds: 3

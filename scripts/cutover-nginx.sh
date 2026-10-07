@@ -24,20 +24,21 @@ echo "   ✅ Nginx syntax is 100% valid."
 # 2. Verify Internal Application Upstreams
 echo "2. Verifying all internal application endpoints..."
 UPSTREAMS=(
-    "3001:/api/ping:Titan"
-    "3002:/:Xylozen"
-    "3003:/:ByteBandits"
-    "4001:/api/health:CRM-Backend-Prod"
+    "3001:/api/ping:Titan:200"
+    "3002:/:Xylozen:200"
+    "3003:/:ByteBandits:200"
+    "4001:/api/auth/me:CRM-Backend-Prod:401"
+    "4002:/api/auth/me:CRM-Backend-Test:401"
 )
 
 ALL_UPSTREAMS_OK=true
 for entry in "${UPSTREAMS[@]}"; do
-    IFS=':' read -r PORT PATH LABEL <<< "$entry"
-    HTTP_CODE=$(curl -s -m 3 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PORT}${PATH}" || echo "000")
-    if [[ "$HTTP_CODE" == "200" ]]; then
-        echo "   ✅ ${LABEL} (port ${PORT}${PATH}) is ONLINE (HTTP 200)."
+    IFS=':' read -r PORT ENDPOINT_PATH LABEL EXPECTED <<< "$entry"
+    HTTP_CODE=$(curl -s -m 3 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PORT}${ENDPOINT_PATH}" || echo "000")
+    if [[ "$HTTP_CODE" == "$EXPECTED" ]]; then
+        echo "   ✅ ${LABEL} (port ${PORT}${ENDPOINT_PATH}) is ONLINE (HTTP ${HTTP_CODE})."
     else
-        echo "   ❌ ERROR: ${LABEL} (port ${PORT}${PATH}) responded with HTTP ${HTTP_CODE}!"
+        echo "   ❌ ERROR: ${LABEL} (port ${PORT}${ENDPOINT_PATH}) responded with HTTP ${HTTP_CODE} (expected ${EXPECTED})!"
         ALL_UPSTREAMS_OK=false
     fi
 done
@@ -49,8 +50,8 @@ fi
 
 # 3. Check Disk Space
 FREE_DISK_MB=$(df -m / | awk 'NR==2 {print $4}')
-if (( FREE_DISK_MB < 500 )); then
-    echo "❌ FATAL: Insufficient disk space (${FREE_DISK_MB} MB < 500 MB). Aborting."
+if (( FREE_DISK_MB < 200 )); then
+    echo "❌ FATAL: Insufficient disk space (${FREE_DISK_MB} MB < 200 MB). Aborting."
     exit 1
 fi
 

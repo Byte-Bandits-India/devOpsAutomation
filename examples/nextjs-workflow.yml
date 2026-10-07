@@ -1,0 +1,48 @@
+name: Deploy Next.js Project
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Next.js Standalone
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🏗️ Build Standalone Bundle
+        run: npm run build
+
+      - name: 📦 Package Artifact
+        run: |
+          mkdir -p /tmp/artifact
+          # Copy standalone server and preserved dotfiles
+          cp -a .next/standalone/. /tmp/artifact/
+          # Copy static assets and public assets into expected directory tree
+          mkdir -p /tmp/artifact/.next
+          cp -a .next/static /tmp/artifact/.next/
+          cp -a public /tmp/artifact/ 2>/dev/null || true
+          tar -czf /tmp/release.tar.gz -C /tmp/artifact .
+
+      - name: 🚀 Deploy via DevOps Automation Engine
+        uses: Byte-Bandits-India/devOpsAutomation/.github/workflows/deploy.yml@main
+        with:
+          project_name: "xylozen" # Replace with your registered projects.yml name
+          environment: "production"
+          artifact_path: "/tmp/release.tar.gz"
+        secrets:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}

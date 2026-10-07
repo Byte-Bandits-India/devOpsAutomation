@@ -59,16 +59,20 @@ elif (( FREE_DISK_MB < 1000 )); then
 fi
 
 # 3. Validate Artifact
-if [[ ! -f "$ARTIFACT_PATH" ]]; then
-    echo "❌ ERROR: Artifact archive not found at: $ARTIFACT_PATH"
+IS_DIRECTORY_ARTIFACT=false
+if [[ -d "$ARTIFACT_PATH" ]]; then
+    IS_DIRECTORY_ARTIFACT=true
+    echo "✅ Artifact directory validated: $ARTIFACT_PATH"
+elif [[ -f "$ARTIFACT_PATH" ]]; then
+    if ! tar -tzf "$ARTIFACT_PATH" >/dev/null 2>&1; then
+        echo "❌ ERROR: Corrupted artifact tarball: $ARTIFACT_PATH"
+        exit 1
+    fi
+    echo "✅ Artifact archive validated."
+else
+    echo "❌ ERROR: Artifact archive or directory not found at: $ARTIFACT_PATH"
     exit 1
 fi
-
-if ! tar -tzf "$ARTIFACT_PATH" >/dev/null 2>&1; then
-    echo "❌ ERROR: Corrupted artifact tarball: $ARTIFACT_PATH"
-    exit 1
-fi
-echo "✅ Artifact archive validated."
 
 if [[ "$DRY_RUN" == "true" ]]; then
     echo "🔍 [DRY-RUN] Would deploy $PROJECT_NAME with release ID $TIMESTAMP."
@@ -96,7 +100,12 @@ fi
 # 5. Extract Artifact into Release Directory
 echo "📦 Extracting release artifact into: $NEW_RELEASE_DIR"
 mkdir -p "$NEW_RELEASE_DIR"
-tar -xzf "$ARTIFACT_PATH" -C "$NEW_RELEASE_DIR"
+if [[ "$IS_DIRECTORY_ARTIFACT" == "true" ]]; then
+    # Try hardlink clone first to preserve disk space on low-storage hosts
+    cp -al "$ARTIFACT_PATH"/. "$NEW_RELEASE_DIR/" 2>/dev/null || cp -a "$ARTIFACT_PATH"/. "$NEW_RELEASE_DIR/"
+else
+    tar -xzf "$ARTIFACT_PATH" -C "$NEW_RELEASE_DIR"
+fi
 
 # 6. Attach Shared Persistent Data & Secrets
 echo "🔗 Attaching shared configurations and persistent assets..."

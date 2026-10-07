@@ -1,0 +1,43 @@
+name: Deploy Static SPA (React/Vite)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build & Package Static Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: 📦 Install Dependencies & Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: 📦 Package Artifact
+        run: |
+          # Package the distribution directory
+          mkdir -p /tmp/artifact/dist
+          cp -a dist/. /tmp/artifact/dist/
+          tar -czf /tmp/release.tar.gz -C /tmp/artifact .
+
+      - name: 🚀 Deploy via DevOps Automation Engine
+        uses: Byte-Bandits-India/devOpsAutomation/.github/workflows/deploy.yml@main
+        with:
+          project_name: "dashboard-prod-frontend" # Replace with your registered projects.yml name
+          environment: "production"
+          artifact_path: "/tmp/release.tar.gz"
+        secrets:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
