@@ -212,3 +212,46 @@ projects:
     static_root_subdir: "dist"
     resources:
       memory_max_restart: null
+
+  # ============================================================================
+  # RIMOTO (Hybrid: Static SPA Frontend + Node/Express API)
+  # ============================================================================
+  rimoto-backend:
+    repository: "Byte-Bandits-India/Rimoto-backend"
+    type: "node"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "rimoto.xylozentech.com"
+    path_prefix: "/api"
+    bind_ip: "127.0.0.1"
+    port: 4003
+    health_check:
+      path: "/api/v1/health"
+      expected_status: 200
+      timeout_seconds: 5
+      max_retries: 5
+      retry_delay_seconds: 3
+    runtime:
+      entrypoint: "dist/index.js"
+      manager: "pm2"
+    resources:
+      memory_max_restart: "250M"
+    persistent:
+      directories:
+        - "uploads"
+    database:
+      type: "mysql"
+      migrations: "manual"
+
+  rimoto-frontend:
+    repository: "Byte-Bandits-India/Rimoto-frontend"
+    type: "static-spa"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "rimoto.xylozentech.com"
+    static_root_subdir: "dist"
+    resources:
+      memory_max_restart: null
+

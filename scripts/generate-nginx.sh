@@ -85,14 +85,19 @@ TMP_CONF="/tmp/${DOMAIN}.candidate.conf"
 FINAL_CONF="${NGINX_CONF_DIR}/${DOMAIN}.conf"
 
 # Generate based on domain & architecture type
-if [[ "$DOMAIN" == "crm.xylozentech.com" || "$DOMAIN" == "testcrm.xylozentech.com" ]]; then
-    # Hybrid CRM virtual host
+if [[ "$DOMAIN" == "crm.xylozentech.com" || "$DOMAIN" == "testcrm.xylozentech.com" || "$DOMAIN" == "rimoto.xylozentech.com" ]]; then
+    # Hybrid virtual host
     IS_TEST=false
     if [[ "$DOMAIN" == "testcrm.xylozentech.com" ]]; then
         IS_TEST=true
         FRONTEND_ROOT="/var/www/dashboard-test-frontend/current/dist"
         BACKEND_PORT="4002"
         UPLOADS_DIR="/var/www/dashboard-test-backend/shared/uploads"
+        ENABLE_PMA=false
+    elif [[ "$DOMAIN" == "rimoto.xylozentech.com" ]]; then
+        FRONTEND_ROOT="/var/www/rimoto-frontend/current/dist"
+        BACKEND_PORT="4003"
+        UPLOADS_DIR="/var/www/rimoto-backend/shared/uploads"
         ENABLE_PMA=false
     else
         FRONTEND_ROOT="/var/www/dashboard-prod-frontend/current/dist"
