@@ -198,3 +198,17 @@ projects:
     root_path: "/var/www/phpmyadmin"
     resources:
       memory_max_restart: null
+
+  # ============================================================================
+  # VIDEO SCROLL ANIMATION (Vite React Static SPA)
+  # ============================================================================
+  video-scroll-animation:
+    repository: "Byte-Bandits-India/Video-scroll-animation"
+    type: "static-spa"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "scroll.xylozentech.com"
+    static_root_subdir: "dist"
+    resources:
+      memory_max_restart: null
