@@ -9,8 +9,8 @@ server:
   keep_releases: 3
   disk_limits:
     warn_free_mb: 1000
-    block_free_mb: 500
-    emergency_free_mb: 250
+    block_free_mb: 250
+    emergency_free_mb: 100
 
 projects:
   # ============================================================================

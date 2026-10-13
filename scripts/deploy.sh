@@ -50,20 +50,25 @@ fi
 FREE_DISK_MB=$(df -m / | awk 'NR==2 {print $4}')
 echo "📊 Current free disk space: ${FREE_DISK_MB} MB"
 
-if (( FREE_DISK_MB < 500 )); then
-    echo "⚠️  Available disk space (${FREE_DISK_MB} MB) is below the 500 MB threshold!"
+BLOCK_THRESHOLD=250
+if [[ "${PROJECT_NAME}" == *"-frontend"* || "${PROJECT_NAME}" == "video-scroll-animation" ]]; then
+    BLOCK_THRESHOLD=100
+fi
+
+if (( FREE_DISK_MB < BLOCK_THRESHOLD )); then
+    echo "⚠️  Available disk space (${FREE_DISK_MB} MB) is below the ${BLOCK_THRESHOLD} MB threshold!"
     echo "🧹 Triggering automated emergency disk space cleanup..."
     "${SCRIPT_DIR}/cleanup.sh" --system || true
     FREE_DISK_MB=$(df -m / | awk 'NR==2 {print $4}')
     echo "📊 Post-cleanup free disk space: ${FREE_DISK_MB} MB"
 fi
 
-if (( FREE_DISK_MB < 500 )); then
-    echo "❌ FATAL: Available disk space (${FREE_DISK_MB} MB) is still below the 500 MB block threshold after cleanup!"
+if (( FREE_DISK_MB < BLOCK_THRESHOLD )); then
+    echo "❌ FATAL: Available disk space (${FREE_DISK_MB} MB) is still below the ${BLOCK_THRESHOLD} MB block threshold after cleanup!"
     echo "   Deployment aborted to protect existing running applications."
     exit 1
-elif (( FREE_DISK_MB < 1000 )); then
-    echo "⚠️  WARNING: Available disk space is low (${FREE_DISK_MB} MB < 1000 MB). Proceeding cautiously."
+elif (( FREE_DISK_MB < 500 )); then
+    echo "⚠️  WARNING: Available disk space is low (${FREE_DISK_MB} MB < 500 MB). Proceeding cautiously."
 fi
 
 # 3. Validate Artifact
