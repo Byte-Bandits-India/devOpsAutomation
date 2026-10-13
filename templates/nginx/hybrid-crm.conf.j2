@@ -93,7 +93,11 @@ server {
 
 {% if ENABLE_PHPMYADMIN %}
     # Component 4: phpMyAdmin Management Web UI
-    location /phpmyadmin/ {
+    location = /phpmyadmin {
+        return 301 /phpmyadmin/;
+    }
+
+    location ^~ /phpmyadmin/ {
         root /var/www;
         index index.php index.html index.htm;
         location ~ ^/phpmyadmin/(.+\.php)$ {
@@ -104,7 +108,7 @@ server {
             include fastcgi_params;
             client_max_body_size 64M;
         }
-        location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+        location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt|svg|woff2?|ttf|eot))$ {
             root /var/www;
             expires 30d;
         }
