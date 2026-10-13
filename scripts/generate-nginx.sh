@@ -62,8 +62,24 @@ EOF
 
 IFS='|' read -r TYPE DOMAIN ALIASES PORT BIND_IP <<< "$PROJ_INFO"
 
-# Automatically attempt Let's Encrypt certificate issuance if not yet generated
-if [[ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]] && command -v certbot >/dev/null 2>&1; then
+# Determine target certificate files (Certbot standard vs Host PKI vs Bootstrap self-signed)
+LE_CERT=""
+LE_KEY=""
+if sudo test -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"; then
+    LE_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+    LE_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
+elif sudo test -f "/etc/letsencrypt/live/${DOMAIN}-0001/fullchain.pem"; then
+    LE_CERT="/etc/letsencrypt/live/${DOMAIN}-0001/fullchain.pem"
+    LE_KEY="/etc/letsencrypt/live/${DOMAIN}-0001/privkey.pem"
+else
+    MATCHING_LINEAGE=$(sudo find /etc/letsencrypt/live -maxdepth 1 -name "*${DOMAIN}*" -type d 2>/dev/null | head -n 1 || true)
+    if [[ -n "$MATCHING_LINEAGE" ]] && sudo test -f "${MATCHING_LINEAGE}/fullchain.pem"; then
+        LE_CERT="${MATCHING_LINEAGE}/fullchain.pem"
+        LE_KEY="${MATCHING_LINEAGE}/privkey.pem"
+    fi
+fi
+
+if [[ -z "$LE_CERT" ]] && command -v certbot >/dev/null 2>&1; then
     echo "🔒 Requesting Let's Encrypt SSL certificate for ${DOMAIN}..."
     sudo mkdir -p /var/www/certbot
     CERT_ARGS="-d ${DOMAIN}"
@@ -73,12 +89,17 @@ if [[ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]] && command -v cert
         fi
     done
     sudo certbot certonly --webroot -w /var/www/certbot $CERT_ARGS --non-interactive --agree-tos --register-unsafely-without-email 2>/dev/null || true
+    if sudo test -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"; then
+        LE_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+        LE_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
+    fi
 fi
 
-# Determine target certificate files (Certbot standard vs Host PKI vs Bootstrap self-signed)
-if [[ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]]; then
-    SSL_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
-    SSL_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
+if [[ -n "$LE_CERT" ]]; then
+    echo "🔒 Using official Let's Encrypt certificate: ${LE_CERT}"
+    SSL_CERT="$LE_CERT"
+    SSL_KEY="$LE_KEY"
+    sudo rm -f "/etc/pki/nginx/certs/${DOMAIN}.crt" "/etc/pki/nginx/certs/${DOMAIN}.key" 2>/dev/null || true
 elif [[ -f "/etc/pki/nginx/certs/${DOMAIN}.crt" && -f "/etc/pki/nginx/certs/${DOMAIN}.key" ]]; then
     SSL_CERT="/etc/pki/nginx/certs/${DOMAIN}.crt"
     SSL_KEY="/etc/pki/nginx/certs/${DOMAIN}.key"
