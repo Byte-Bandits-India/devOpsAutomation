@@ -8,7 +8,7 @@
 server {
     listen 80;
     listen [::]:80;
-    server_name {{ DOMAIN }};
+    server_name {{ DOMAIN }}{% if ALIASES %} {{ ALIASES }}{% endif %};
 
     # ACME Challenge location for Certbot auto-renewal
     location /.well-known/acme-challenge/ {
@@ -26,7 +26,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name {{ DOMAIN }};
+    server_name {{ DOMAIN }}{% if ALIASES %} {{ ALIASES }}{% endif %};
 
     # SSL Certificates
     ssl_certificate {{ SSL_CERT }};
@@ -45,6 +45,9 @@ server {
     add_header X-Frame-Options SAMEORIGIN always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Body Size Limit (supports file/video uploads)
+    client_max_body_size 250M;
 
     # Gzip Compression
     gzip on;
@@ -70,10 +73,14 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Port $server_port;
 
-        client_max_body_size 64M;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
+        client_max_body_size 250M;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+    }
+
+    location = /api {
+        return 301 /api/;
     }
 
     # Component 3: Persistent Uploads

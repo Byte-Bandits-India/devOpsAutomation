@@ -242,7 +242,7 @@ projects:
         - "uploads"
     database:
       type: "mysql"
-      migrations: "manual"
+      migrations: "prisma"
 
   rimoto-frontend:
     repository: "Byte-Bandits-India/Rimoto-frontend"

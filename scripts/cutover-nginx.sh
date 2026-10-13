@@ -29,6 +29,7 @@ UPSTREAMS=(
     "3003:/:ByteBandits:200"
     "4001:/api/auth/me:CRM-Backend-Prod:401"
     "4002:/api/auth/me:CRM-Backend-Test:401"
+    "4003:/api/v1/health:Rimoto-Backend:200"
 )
 
 ALL_UPSTREAMS_OK=true
@@ -78,7 +79,7 @@ fi
 
 # Post-Cutover Verification
 echo "🔍 Verifying public domain responses..."
-DOMAINS=("crm.xylozentech.com" "xylozentech.com" "thebytebandits.com" "titan.xylozentech.com")
+DOMAINS=("crm.xylozentech.com" "xylozentech.com" "thebytebandits.com" "titan.xylozentech.com" "rimoto.xylozentech.com")
 CUTOVER_FAILED=false
 
 for d in "${DOMAINS[@]}"; do

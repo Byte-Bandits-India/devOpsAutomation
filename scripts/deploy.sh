@@ -153,6 +153,7 @@ if (dirsSection) {
 
 console.log(JSON.stringify({
   type: typeMatch ? typeMatch[1] : 'node',
+  migrations: migrationsMatch ? migrationsMatch[1] : 'manual',
   files,
   directories: dirs
 }));
@@ -160,6 +161,7 @@ EOF
 )
 
 PROJECT_TYPE=$(echo "$PROJ_PERSISTENT_JSON" | node -e 'const d=JSON.parse(fs.readFileSync(0)); console.log(d.type);')
+DB_MIGRATIONS=$(echo "$PROJ_PERSISTENT_JSON" | node -e 'const d=JSON.parse(fs.readFileSync(0)); console.log(d.migrations || "manual");')
 
 # Link persistent files dynamically (e.g. SQLite database files, certs)
 while IFS= read -r file; do
@@ -182,6 +184,18 @@ while IFS= read -r dir; do
         echo "   🔗 Linked persistent directory: ${dir} -> shared/${dir}"
     fi
 done < <(echo "$PROJ_PERSISTENT_JSON" | node -e 'const d=JSON.parse(fs.readFileSync(0)); d.directories.forEach(dir => console.log(dir));')
+
+# 6.5 Automated Database Migrations (if configured)
+if [[ "$DB_MIGRATIONS" == "prisma" || "$DB_MIGRATIONS" == "auto" ]]; then
+    if [[ -d "${NEW_RELEASE_DIR}/prisma" ]]; then
+        echo "🗄️ Executing Prisma migrations (npx prisma migrate deploy)..."
+        if ! (cd "$NEW_RELEASE_DIR" && npx prisma migrate deploy); then
+            echo "❌ ERROR: Database migration failed! Aborting deployment."
+            exit 1
+        fi
+        echo "✅ Database migrations applied successfully."
+    fi
+fi
 
 # 7. Atomic Symlink Switch
 echo "🔄 Atomically switching 'current' pointer to release ${TIMESTAMP}..."

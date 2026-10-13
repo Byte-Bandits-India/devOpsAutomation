@@ -41,7 +41,7 @@ const portMatch = block.match(/port:\s*(\d+)/);
 const bindMatch = block.match(/bind_ip:\s*["']?([^"'\s]+)/);
 
 // Extract aliases
-const aliasSection = block.match(/aliases:\s*\n((\s+-\s+["']?[^\n"']+["']?\n?)+)/);
+const aliasSection = block.match(/aliases:\s*\n((\s+-\s+[\x22\x27]?[^\n\x22\x27]+[\x22\x27]?\n?)+)/);
 let aliases = [];
 if (aliasSection) {
     const aliasLines = aliasSection[1].split('\n');
@@ -108,6 +108,7 @@ if [[ "$DOMAIN" == "crm.xylozentech.com" || "$DOMAIN" == "testcrm.xylozentech.co
 
     # Render hybrid template
     sed -e "s|{{ DOMAIN }}|${DOMAIN}|g" \
+        -e "s|{{ ALIASES }}|${ALIASES}|g" \
         -e "s|{{ SSL_CERT }}|${SSL_CERT}|g" \
         -e "s|{{ SSL_KEY }}|${SSL_KEY}|g" \
         -e "s|{{ FRONTEND_ROOT }}|${FRONTEND_ROOT}|g" \
@@ -115,6 +116,9 @@ if [[ "$DOMAIN" == "crm.xylozentech.com" || "$DOMAIN" == "testcrm.xylozentech.co
         -e "s|{{ BACKEND_PORT }}|${BACKEND_PORT}|g" \
         -e "s|{{ UPLOADS_DIR }}|${UPLOADS_DIR}|g" \
         "${TEMPLATES_DIR}/hybrid-crm.conf.j2" > "$TMP_CONF"
+
+    sed -i 's/{% if ALIASES %}//g' "$TMP_CONF"
+    sed -i 's/{% endif %}//g' "$TMP_CONF"
 
     # Handle Jinja condition for PMA in sed
     if [[ "$ENABLE_PMA" == "false" ]]; then

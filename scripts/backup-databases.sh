@@ -67,7 +67,7 @@ if systemctl is-active --quiet mysqld 2>/dev/null; then
     MYSQL_BACKUP="${BACKUP_ROOT}/mysql/mysql_all_${TIMESTAMP}.sql.gz"
     
     # Dump using root or ec2-user socket
-    if mysqldump --databases dashboard dashboard_test --single-transaction --routines --triggers 2>/dev/null | gzip > "$MYSQL_BACKUP"; then
+    if mysqldump --databases dashboard dashboard_test rimoto --single-transaction --routines --triggers 2>/dev/null | gzip > "$MYSQL_BACKUP"; then
         if [[ -s "$MYSQL_BACKUP" ]]; then
             echo "   ✅ MySQL backup saved at: ${MYSQL_BACKUP} ($(du -h "$MYSQL_BACKUP" | cut -f1))"
         else
