@@ -62,6 +62,19 @@ EOF
 
 IFS='|' read -r TYPE DOMAIN ALIASES PORT BIND_IP <<< "$PROJ_INFO"
 
+# Automatically attempt Let's Encrypt certificate issuance if not yet generated
+if [[ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]] && command -v certbot >/dev/null 2>&1; then
+    echo "🔒 Requesting Let's Encrypt SSL certificate for ${DOMAIN}..."
+    sudo mkdir -p /var/www/certbot
+    CERT_ARGS="-d ${DOMAIN}"
+    for al in $ALIASES; do
+        if [[ -n "$al" ]]; then
+            CERT_ARGS="${CERT_ARGS} -d ${al}"
+        fi
+    done
+    sudo certbot certonly --webroot -w /var/www/certbot $CERT_ARGS --non-interactive --agree-tos --register-unsafely-without-email 2>/dev/null || true
+fi
+
 # Determine target certificate files (Certbot standard vs Host PKI vs Bootstrap self-signed)
 if [[ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]]; then
     SSL_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
