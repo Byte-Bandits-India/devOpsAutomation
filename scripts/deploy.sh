@@ -51,7 +51,15 @@ FREE_DISK_MB=$(df -m / | awk 'NR==2 {print $4}')
 echo "📊 Current free disk space: ${FREE_DISK_MB} MB"
 
 if (( FREE_DISK_MB < 500 )); then
-    echo "❌ FATAL: Available disk space (${FREE_DISK_MB} MB) is below the 500 MB block threshold!"
+    echo "⚠️  Available disk space (${FREE_DISK_MB} MB) is below the 500 MB threshold!"
+    echo "🧹 Triggering automated emergency disk space cleanup..."
+    "${SCRIPT_DIR}/cleanup.sh" --system || true
+    FREE_DISK_MB=$(df -m / | awk 'NR==2 {print $4}')
+    echo "📊 Post-cleanup free disk space: ${FREE_DISK_MB} MB"
+fi
+
+if (( FREE_DISK_MB < 500 )); then
+    echo "❌ FATAL: Available disk space (${FREE_DISK_MB} MB) is still below the 500 MB block threshold after cleanup!"
     echo "   Deployment aborted to protect existing running applications."
     exit 1
 elif (( FREE_DISK_MB < 1000 )); then
@@ -105,6 +113,7 @@ if [[ "$IS_DIRECTORY_ARTIFACT" == "true" ]]; then
     cp -al "$ARTIFACT_PATH"/. "$NEW_RELEASE_DIR/" 2>/dev/null || cp -a "$ARTIFACT_PATH"/. "$NEW_RELEASE_DIR/"
 else
     tar -xzf "$ARTIFACT_PATH" -C "$NEW_RELEASE_DIR"
+    rm -f "$ARTIFACT_PATH" 2>/dev/null || true
 fi
 
 # 6. Attach Shared Persistent Data & Secrets
