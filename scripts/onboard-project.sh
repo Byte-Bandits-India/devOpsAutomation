@@ -149,7 +149,7 @@ if [[ -n "$DOMAIN" ]]; then
 
     if systemctl is-active --quiet nginx 2>/dev/null; then
         echo "🔄 Reloading Nginx..."
-        sudo systemctl reload nginx
+        sudo systemctl reload nginx 2>/dev/null || sudo systemctl restart nginx
     fi
 
     # Optional automated Certbot SSL issuance
@@ -169,7 +169,7 @@ if [[ -n "$DOMAIN" ]]; then
                 echo "✅ Let's Encrypt certificate obtained successfully!"
                 echo "🔄 Regenerating Nginx virtual host with production certificates..."
                 "${SCRIPT_DIR}/generate-nginx.sh" "$PROJECT_NAME"
-                sudo systemctl reload nginx
+                sudo systemctl reload nginx 2>/dev/null || sudo systemctl restart nginx
             else
                 echo "⚠️  Certbot challenge did not complete. Please verify DNS A record for ${DOMAIN} points to this server."
                 echo "   Fallback bootstrap certificate remains active in the interim."

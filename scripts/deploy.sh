@@ -249,9 +249,25 @@ fi
 # 9. Update Nginx Configuration if Nginx is active
 if [[ -f "/etc/nginx/conf.d" || -d "/etc/nginx/conf.d" ]]; then
     "${SCRIPT_DIR}/generate-nginx.sh" "$PROJECT_NAME" || true
-    if systemctl is-active --quiet nginx 2>/dev/null; then
+    if sudo systemctl is-active --quiet nginx 2>/dev/null; then
         echo "🔄 Reloading Nginx configuration..."
-        sudo systemctl reload nginx
+        if ! sudo systemctl reload nginx 2>/dev/null; then
+            echo "⚠️  Nginx reload failed, restarting service..."
+            sudo systemctl restart nginx || {
+                echo "❌ Failed to restart Nginx! Service status:"
+                sudo systemctl status nginx --no-pager || true
+                sudo journalctl -xeu nginx.service --no-pager -n 25 || true
+                exit 1
+            }
+        fi
+    else
+        echo "🔄 Nginx is not active. Starting Nginx..."
+        sudo systemctl restart nginx || sudo systemctl start nginx || {
+            echo "❌ Failed to start Nginx! Service status:"
+            sudo systemctl status nginx --no-pager || true
+            sudo journalctl -xeu nginx.service --no-pager -n 25 || true
+            exit 1
+        }
     fi
 fi
 
