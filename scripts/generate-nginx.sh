@@ -100,7 +100,7 @@ if [[ -n "$LE_CERT" ]]; then
     SSL_CERT="$LE_CERT"
     SSL_KEY="$LE_KEY"
     sudo rm -f "/etc/pki/nginx/certs/${DOMAIN}.crt" "/etc/pki/nginx/certs/${DOMAIN}.key" 2>/dev/null || true
-elif [[ -f "/etc/pki/nginx/certs/${DOMAIN}.crt" && -f "/etc/pki/nginx/certs/${DOMAIN}.key" ]]; then
+elif sudo test -f "/etc/pki/nginx/certs/${DOMAIN}.crt" && sudo test -f "/etc/pki/nginx/certs/${DOMAIN}.key"; then
     SSL_CERT="/etc/pki/nginx/certs/${DOMAIN}.crt"
     SSL_KEY="/etc/pki/nginx/certs/${DOMAIN}.key"
 else
