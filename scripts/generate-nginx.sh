@@ -99,7 +99,6 @@ if [[ -n "$LE_CERT" ]]; then
     echo "🔒 Using official Let's Encrypt certificate: ${LE_CERT}"
     SSL_CERT="$LE_CERT"
     SSL_KEY="$LE_KEY"
-    sudo rm -f "/etc/pki/nginx/certs/${DOMAIN}.crt" "/etc/pki/nginx/certs/${DOMAIN}.key" 2>/dev/null || true
 elif sudo test -f "/etc/pki/nginx/certs/${DOMAIN}.crt" && sudo test -f "/etc/pki/nginx/certs/${DOMAIN}.key"; then
     SSL_CERT="/etc/pki/nginx/certs/${DOMAIN}.crt"
     SSL_KEY="/etc/pki/nginx/certs/${DOMAIN}.key"
@@ -208,8 +207,11 @@ echo "🔍 Validating candidate Nginx configuration for '${DOMAIN}'..."
 TEST_CONF="${NGINX_CONF_DIR}/${DOMAIN}.test-syntax.conf"
 sudo cp "$TMP_CONF" "$TEST_CONF"
 
-if sudo nginx -t 2>/dev/null; then
+if sudo nginx -t; then
     sudo mv "$TEST_CONF" "$FINAL_CONF"
+    if [[ -n "$LE_CERT" ]]; then
+        sudo rm -f "/etc/pki/nginx/certs/${DOMAIN}.crt" "/etc/pki/nginx/certs/${DOMAIN}.key" 2>/dev/null || true
+    fi
     rm -f "$TMP_CONF"
     echo "✅ Successfully generated and validated: $FINAL_CONF"
 else
