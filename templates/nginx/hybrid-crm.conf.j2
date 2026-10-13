@@ -61,7 +61,7 @@ server {
     index index.html;
 
     # Component 2: Node.js Backend API
-    location /api/ {
+    location ^~ /api/ {
         proxy_pass http://{{ BIND_IP }}:{{ BACKEND_PORT }};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -84,7 +84,7 @@ server {
     }
 
     # Component 3: Persistent Uploads
-    location /uploads/ {
+    location ^~ /uploads/ {
         alias {{ UPLOADS_DIR }}/;
         expires 30d;
         add_header Cache-Control "public";
