@@ -142,6 +142,7 @@ const match = content.match(regex);
 if (!match) process.exit(1);
 const block = match[0];
 const typeMatch = block.match(/type:\s*["']?([^"'\s]+)/);
+const migrationsMatch = block.match(/migrations:\s*["']?([^"'\s]+)/);
 
 // Parse persistent files
 const filesSection = block.match(/files:\s*\n((\s+-\s+["']?[^\n"']+["']?\n?)+)/);
