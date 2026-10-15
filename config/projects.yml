@@ -255,3 +255,18 @@ projects:
     resources:
       memory_max_restart: null
 
+  # ============================================================================
+  # INFO PORTAL (Static Quick Portal & Documents)
+  # ============================================================================
+  info:
+    repository: "Byte-Bandits-India/info"
+    type: "static-spa"
+    environment: "production"
+    allowed_branches:
+      - "main"
+    domain: "info.xylozentech.com"
+    static_root_subdir: "dist"
+    resources:
+      memory_max_restart: null
+
+

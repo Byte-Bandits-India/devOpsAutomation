@@ -51,7 +51,7 @@ FREE_DISK_MB=$(df -m / | awk 'NR==2 {print $4}')
 echo "📊 Current free disk space: ${FREE_DISK_MB} MB"
 
 BLOCK_THRESHOLD=250
-if [[ "${PROJECT_NAME}" == *"-frontend"* || "${PROJECT_NAME}" == "video-scroll-animation" ]]; then
+if [[ "${PROJECT_NAME}" == *"-frontend"* || "${PROJECT_NAME}" == "video-scroll-animation" || "${PROJECT_NAME}" == "info" ]]; then
     BLOCK_THRESHOLD=100
 fi
 
