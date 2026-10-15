@@ -72,7 +72,7 @@ elif sudo test -f "/etc/letsencrypt/live/${DOMAIN}-0001/fullchain.pem"; then
     LE_CERT="/etc/letsencrypt/live/${DOMAIN}-0001/fullchain.pem"
     LE_KEY="/etc/letsencrypt/live/${DOMAIN}-0001/privkey.pem"
 else
-    MATCHING_LINEAGE=$(sudo find /etc/letsencrypt/live -maxdepth 1 -name "*${DOMAIN}*" -type d 2>/dev/null | head -n 1 || true)
+    MATCHING_LINEAGE=$(sudo find /etc/letsencrypt/live -maxdepth 1 -name "${DOMAIN}*" -type d 2>/dev/null | head -n 1 || true)
     if [[ -n "$MATCHING_LINEAGE" ]] && sudo test -f "${MATCHING_LINEAGE}/fullchain.pem"; then
         LE_CERT="${MATCHING_LINEAGE}/fullchain.pem"
         LE_KEY="${MATCHING_LINEAGE}/privkey.pem"
