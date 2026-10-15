@@ -57,9 +57,9 @@ server {
     index index.html;
 
     # Static Assets Caching
-    location ~* \.(?:ico|css|js|gif|jpe?g|png|svg|woff2?|eot|ttf|otf)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
+    location ~* \.(?:ico|css|js|gif|jpe?g|png|svg|woff2?|eot|ttf|otf|pdf|webp)$ {
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
         access_log off;
         try_files $uri =404;
     }
