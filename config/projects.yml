@@ -103,7 +103,8 @@ projects:
       directories: []
 
   # ============================================================================
-  # DASHBOARD / CRM - PRODUCTION (Hybrid: Static SPA + Node API)
+  # DASHBOARD / CRM - PRODUCTION (Backend API on EC2 | Frontend on Vercel)
+  # Frontend: Vercel (https://crm.xylozentech.com)
   # ============================================================================
   dashboard-prod-backend:
     repository: "Byte-Bandits-India/Xylozen-crm"
@@ -111,7 +112,7 @@ projects:
     environment: "production"
     allowed_branches:
       - "main"
-    domain: "crm.xylozentech.com"
+    domain: "api-crm.xylozentech.com"
     path_prefix: "/api"
     bind_ip: "127.0.0.1"
     port: 4001
@@ -133,16 +134,7 @@ projects:
       type: "mysql"
       migrations: "manual"
 
-  dashboard-prod-frontend:
-    repository: "Byte-Bandits-India/Xylozen-crm"
-    type: "static-spa"
-    environment: "production"
-    allowed_branches:
-      - "main"
-    domain: "crm.xylozentech.com"
-    static_root_subdir: "dist"
-    resources:
-      memory_max_restart: null
+  # dashboard-prod-frontend migrated to Vercel
 
   # ============================================================================
   # DASHBOARD / CRM - TEST (Hybrid: Static SPA + Node API)
