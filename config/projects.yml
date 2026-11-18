@@ -14,36 +14,8 @@ server:
 
 projects:
   # ============================================================================
-  # TITAN (Vite Frontend + TS Express Server + SQLite WAL)
+  # TITAN - DECOMMISSIONED / REMOVED
   # ============================================================================
-  titan:
-    repository: "Byte-Bandits-India/titan-Eye"
-    type: "node"
-    environment: "production"
-    allowed_branches:
-      - "main"
-    domain: "titan.xylozentech.com"
-    bind_ip: "127.0.0.1"
-    port: 3001
-    health_check:
-      path: "/api/ping"
-      expected_status: 200
-      timeout_seconds: 5
-      max_retries: 5
-      retry_delay_seconds: 3
-    runtime:
-      entrypoint: "server.js"
-      manager: "pm2"
-    resources:
-      memory_max_restart: "250M"
-    persistent:
-      files:
-        - "database.db"
-        - "database.db-wal"
-        - "database.db-shm"
-      directories:
-        - "uploads"
-        - "logs"
 
   # ============================================================================
   # XYLOZEN (Next.js 14 Standalone Website)
@@ -138,46 +110,8 @@ projects:
   # dashboard-prod-frontend migrated to Vercel
 
   # ============================================================================
-  # DASHBOARD / CRM - TEST (Hybrid: Static SPA + Node API)
+  # DASHBOARD / CRM - TEST - DECOMMISSIONED / REMOVED
   # ============================================================================
-  dashboard-test-backend:
-    repository: "Byte-Bandits-India/Xylozen-crm"
-    type: "node"
-    environment: "test"
-    allowed_branches:
-      - "develop"
-    domain: "testcrm.xylozentech.com"
-    path_prefix: "/api"
-    bind_ip: "127.0.0.1"
-    port: 4002
-    health_check:
-      path: "/api/auth/me"
-      expected_status: 401
-      timeout_seconds: 5
-      max_retries: 5
-      retry_delay_seconds: 3
-    runtime:
-      entrypoint: "dist/server.js"
-      manager: "pm2"
-    resources:
-      memory_max_restart: "250M"
-    persistent:
-      directories:
-        - "uploads"
-    database:
-      type: "mysql"
-      migrations: "manual"
-
-  dashboard-test-frontend:
-    repository: "Byte-Bandits-India/Xylozen-crm"
-    type: "static-spa"
-    environment: "test"
-    allowed_branches:
-      - "develop"
-    domain: "testcrm.xylozentech.com"
-    static_root_subdir: "dist"
-    resources:
-      memory_max_restart: null
 
   # ============================================================================
   # PHPMYADMIN (Native PHP-FPM web UI for MySQL management)
