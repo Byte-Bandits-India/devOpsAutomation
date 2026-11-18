@@ -249,16 +249,17 @@ projects:
 
   # ============================================================================
   # INFO PORTAL (Static Quick Portal & Documents)
+  # Migrated to Vercel: https://info.xylozentech.com
   # ============================================================================
-  info:
-    repository: "Byte-Bandits-India/info"
-    type: "static-spa"
-    environment: "production"
-    allowed_branches:
-      - "main"
-    domain: "info.xylozentech.com"
-    static_root_subdir: "dist"
-    resources:
-      memory_max_restart: null
+  # info:
+  #   repository: "Byte-Bandits-India/info"
+  #   type: "static-spa"
+  #   environment: "production"
+  #   allowed_branches:
+  #     - "main"
+  #   domain: "info.xylozentech.com"
+  #   static_root_subdir: "dist"
+  #   resources:
+  #     memory_max_restart: null
 
 
