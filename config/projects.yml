@@ -193,17 +193,18 @@ projects:
 
   # ============================================================================
   # VIDEO SCROLL ANIMATION (Vite React Static SPA)
+  # Migrated to Vercel: https://scroll.xylozentech.com
   # ============================================================================
-  video-scroll-animation:
-    repository: "Byte-Bandits-India/Video-scroll-animation"
-    type: "static-spa"
-    environment: "production"
-    allowed_branches:
-      - "main"
-    domain: "scroll.xylozentech.com"
-    static_root_subdir: "dist"
-    resources:
-      memory_max_restart: null
+  # video-scroll-animation:
+  #   repository: "Byte-Bandits-India/Video-scroll-animation"
+  #   type: "static-spa"
+  #   environment: "production"
+  #   allowed_branches:
+  #     - "main"
+  #   domain: "scroll.xylozentech.com"
+  #   static_root_subdir: "dist"
+  #   resources:
+  #     memory_max_restart: null
 
   # ============================================================================
   # RIMOTO (Hybrid: Static SPA Frontend + Node/Express API)
