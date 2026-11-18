@@ -47,32 +47,33 @@ projects:
 
   # ============================================================================
   # XYLOZEN (Next.js 14 Standalone Website)
+  # Migrated to Vercel: https://xylozentech.com / https://www.xylozentech.com
   # ============================================================================
-  xylozen:
-    repository: "Byte-Bandits-India/Xylozen"
-    type: "nextjs-standalone"
-    environment: "production"
-    allowed_branches:
-      - "main"
-    domain: "xylozentech.com"
-    aliases:
-      - "www.xylozentech.com"
-    bind_ip: "127.0.0.1"
-    port: 3002
-    health_check:
-      path: "/"
-      expected_status: 200
-      timeout_seconds: 5
-      max_retries: 5
-      retry_delay_seconds: 3
-    runtime:
-      entrypoint: "server.js"
-      manager: "pm2"
-    resources:
-      memory_max_restart: "250M"
-    persistent:
-      directories:
-        - "public/uploads"
+  # xylozen:
+  #   repository: "Byte-Bandits-India/Xylozen"
+  #   type: "nextjs-standalone"
+  #   environment: "production"
+  #   allowed_branches:
+  #     - "main"
+  #   domain: "xylozentech.com"
+  #   aliases:
+  #     - "www.xylozentech.com"
+  #   bind_ip: "127.0.0.1"
+  #   port: 3002
+  #   health_check:
+  #     path: "/"
+  #     expected_status: 200
+  #     timeout_seconds: 5
+  #     max_retries: 5
+  #     retry_delay_seconds: 3
+  #   runtime:
+  #     entrypoint: "server.js"
+  #     manager: "pm2"
+  #   resources:
+  #     memory_max_restart: "250M"
+  #   persistent:
+  #     directories:
+  #       - "public/uploads"
 
   # ============================================================================
   # BYTEBANDITS (Next.js 15 Standalone Website)
